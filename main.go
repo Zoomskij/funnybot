@@ -1,10 +1,25 @@
 package main
 import (
   "github.com/Syfaro/telegram-bot-api"
+  "github.com/andygrunwald/go-jira"
   "log"
+  "fmt"
 )
 
 func main() {
+  jiraClient, err := jira.NewClient(nil, "https://jira.instance.com")
+	if err != nil {
+		panic(err)
+	}
+	jiraClient.Authentication.SetBasicAuth("username", "passowrd")
+
+	issue, _, err := jiraClient.Issue.Get("TASK-KEY", nil)
+	if err != nil {
+		panic(err)
+	}
+
+	fmt.Printf("%s: %+v\n", issue.Key, issue.Fields.Summary)
+
   bot, err := tgbotapi.NewBotAPI("TOKEN")
   if err != nil {
     log.Panic(err)
@@ -31,7 +46,7 @@ func main() {
 
 			log.Printf("[%s] %d %s", UserName, ChatID, Text)
 
-			reply := "Hola Amigo!"
+			reply := issue.Fields.Summary
 
 			msg := tgbotapi.NewMessage(ChatID, reply)
 
