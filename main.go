@@ -15,18 +15,6 @@ func main() {
 	}
 	jiraClient.Authentication.SetBasicAuth("username", "password")
 
-	//boards :=
-	//issue, _, err := jiraClient.Issue.Get("SAM-33", nil)
-	issue, _, err := jiraClient.Issue.Get("ISSUE-ID", nil)
-	if err != nil {
-		panic(err)
-	}
-
-	//boards := jiraClient.Board.GetBoard(boardID)
-	//board := jiraClient.Issue.Get("SAM-33", nil)
-
-	//fmt.Printf("%s: %+v\n", issue.Key, issue.Fields.Summary)
-
 	bot, err := tgbotapi.NewBotAPI("TOKEN")
 	if err != nil {
 		log.Panic(err)
@@ -45,25 +33,110 @@ func main() {
 		select {
 		case update := <-upd:
 
-			UserName := update.Message.From.UserName
-
 			ChatID := update.Message.Chat.ID
 
 			Text := update.Message.Text
 
-			OriginalEstimate := strconv.Itoa(issue.Fields.TimeOriginalEstimate / 60)
-			TimeSpent := strconv.Itoa(issue.Fields.TimeSpent / 60)
-			TimeEstimate := strconv.Itoa(issue.Fields.TimeEstimate / 60)
+			if Text == "/help" {
+				reply := "Current commands: \n" +
+					"/help - current help \n" +
+					"/today - return one issue (static issue)\n" +
+					"/getall - return all issues \n" +
+					"/upper - show with excess estimate \n" +
+					"/less - show with lack of estimate "
+				msg := tgbotapi.NewMessage(ChatID, reply)
+				bot.Send(msg)
+			}
 
 			if Text == "/today" {
-				log.Printf("[%s] %d %s", UserName, ChatID, Text)
+				var reply string
+				issue, _, err := jiraClient.Issue.Get("SAM-9", nil)
+				if err != nil {
+					panic(err)
+				}
 
-				reply := issue.Fields.Summary + "(" + OriginalEstimate + "/" + TimeSpent + "/" + TimeEstimate + ")"
+				reply += getReply(issue)
 
 				msg := tgbotapi.NewMessage(ChatID, reply)
 
 				bot.Send(msg)
 			}
+
+			if Text == "/getall" {
+				var reply string
+				for i := 1; i <= 5; i++ {
+					issueId := "SAM-" + strconv.Itoa(i)
+					issue, _, err := jiraClient.Issue.Get(issueId, nil)
+					if err != nil {
+						panic(err)
+					}
+
+					reply += getReply(issue)
+				}
+				msg := tgbotapi.NewMessage(ChatID, reply)
+				bot.Send(msg)
+			}
+
+			if Text == "/upper" {
+				var reply string
+				for i := 1; i <= 39; i++ {
+					issueId := "SAM-" + strconv.Itoa(i)
+					issue, _, err := jiraClient.Issue.Get(issueId, nil)
+					if err != nil {
+						panic(err)
+					}
+					if (issue.Fields.TimeOriginalEstimate + 10*60) < issue.Fields.TimeSpent {
+						reply += getReply(issue)
+					}
+				}
+				msg := tgbotapi.NewMessage(ChatID, reply)
+				bot.Send(msg)
+			}
+
+			if Text == "/less" {
+				var reply string
+				for i := 1; i <= 39; i++ {
+					issueId := "SAM-" + strconv.Itoa(i)
+					issue, _, err := jiraClient.Issue.Get(issueId, nil)
+					if err != nil {
+						panic(err)
+					}
+					if (issue.Fields.TimeOriginalEstimate) > (issue.Fields.TimeSpent + 10*60) {
+						reply += getReply(issue)
+					}
+				}
+				msg := tgbotapi.NewMessage(ChatID, reply)
+				bot.Send(msg)
+			}
 		}
 	}
+
+}
+
+func getReply(issue *jira.Issue) string {
+	var reply string
+	OriginalEstimate := strconv.Itoa(issue.Fields.TimeOriginalEstimate/3600) + "h" + strconv.Itoa(issue.Fields.TimeOriginalEstimate/60%60) + "m"
+	TimeSpent := strconv.Itoa(issue.Fields.TimeSpent/3600) + "h" + strconv.Itoa(issue.Fields.TimeSpent/60%60) + "m"
+	TimeEstimate := strconv.Itoa(issue.Fields.TimeEstimate/3600) + "h" + strconv.Itoa(issue.Fields.TimeEstimate/60%60) + "m"
+	reply += issue.Key + " " + issue.Fields.Summary + "\n"
+	reply += " ([" + OriginalEstimate + "]  [" + TimeSpent + "]  [" + TimeEstimate + "])"
+	reply += " (" + issue.Fields.Assignee.DisplayName + ")\n"
+
+	var indexSpent int
+	if issue.Fields.TimeOriginalEstimate > issue.Fields.TimeSpent {
+		indexSpent = issue.Fields.TimeSpent / 3600
+	} else {
+		indexSpent = issue.Fields.TimeSpent/3600 - (issue.Fields.TimeSpent/3600 - issue.Fields.TimeOriginalEstimate/3600)
+	}
+	for i := 0; i < indexSpent; i++ {
+		reply += "\xE2\x9A\xAB"
+	}
+	for i := 0; i < issue.Fields.TimeOriginalEstimate/3600-issue.Fields.TimeSpent/3600; i++ {
+		reply += "\xE2\x9A\xAA"
+	}
+	for i := 0; i < issue.Fields.TimeSpent/3600-issue.Fields.TimeOriginalEstimate/3600; i++ {
+		reply += "\xF0\x9F\x94\xB4"
+	}
+	reply += "\n\n"
+	return reply
 }
