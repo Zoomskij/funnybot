@@ -4,7 +4,6 @@ import (
 	"log"
 	"strconv"
 
-	"github.com/Syfaro/telegram-bot-api"
 	"github.com/andygrunwald/go-jira"
 )
 
@@ -120,7 +119,9 @@ func getReply(issue *jira.Issue) string {
 	TimeEstimate := strconv.Itoa(issue.Fields.TimeEstimate/3600) + "h" + strconv.Itoa(issue.Fields.TimeEstimate/60%60) + "m"
 	reply += issue.Key + " " + issue.Fields.Summary + "\n"
 	reply += " ([" + OriginalEstimate + "]  [" + TimeSpent + "]  [" + TimeEstimate + "])"
-	reply += " (" + issue.Fields.Assignee.DisplayName + ")\n"
+	if issue.Fields.Assignee != nil {
+		reply += " (" + issue.Fields.Assignee.DisplayName + ")\n"
+	}
 
 	var indexSpent int
 	if issue.Fields.TimeOriginalEstimate > issue.Fields.TimeSpent {
