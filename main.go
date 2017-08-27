@@ -17,7 +17,7 @@ func main() {
 	}
 	jiraClient.Authentication.SetBasicAuth("EMAIL", "PASS")
 
-	bot, err := tgbotapi.NewBotAPI("TOKEN")
+	bot, err := tgbotapi.NewBotAPI("TOkEN")
 	if err != nil {
 		log.Panic(err)
 	}
@@ -66,7 +66,7 @@ func main() {
 
 			if Text == "/getall" {
 				var reply string
-				for i := 1; i <= 39; i++ {
+				for i := 1; i <= 5; i++ {
 					issueId := "SAM-" + strconv.Itoa(i)
 					issue, _, err := jiraClient.Issue.Get(issueId, nil)
 					if err != nil {
@@ -112,7 +112,9 @@ func main() {
 			}
 
 			if Text == "/hub" {
-				reply := hubwrapper.Auth()
+				//reply := hubwrapper.Auth() + "\n"
+				//reply += hubwrapper.GetUsers()
+				reply := hubwrapper.GetTasks()
 				//reply := hubwrapper.auth()
 				msg := tgbotapi.NewMessage(ChatID, reply)
 				bot.Send(msg)
