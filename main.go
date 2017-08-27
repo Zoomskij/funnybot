@@ -4,18 +4,20 @@ import (
 	"log"
 	"strconv"
 
+	"./hubstaff-wrapper"
+
 	"github.com/Syfaro/telegram-bot-api"
 	"github.com/andygrunwald/go-jira"
 )
 
 func main() {
-	jiraClient, err := jira.NewClient(nil, "https://INSTANCE.COM")
+	jiraClient, err := jira.NewClient(nil, "https://INSTANCE.atlassian.net")
 	if err != nil {
 		panic(err)
 	}
-	jiraClient.Authentication.SetBasicAuth("EMAIL", "PASSWORD")
+	jiraClient.Authentication.SetBasicAuth("EMAIL", "PASS")
 
-	bot, err := tgbotapi.NewBotAPI("TELEGRAM.TOKEN")
+	bot, err := tgbotapi.NewBotAPI("TOKEN")
 	if err != nil {
 		log.Panic(err)
 	}
@@ -110,7 +112,8 @@ func main() {
 			}
 
 			if Text == "/hub" {
-				reply := hubauth()
+				reply := hubwrapper.Auth()
+				//reply := hubwrapper.auth()
 				msg := tgbotapi.NewMessage(ChatID, reply)
 				bot.Send(msg)
 			}

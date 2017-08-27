@@ -1,4 +1,4 @@
-package main
+package hubwrapper
 
 import (
 	"bytes"
@@ -8,7 +8,7 @@ import (
 	"time"
 )
 
-type Auth struct {
+type AuthModel struct {
 	User struct {
 		ID           int       `json:"id"`
 		Name         string    `json:"name"`
@@ -17,11 +17,11 @@ type Auth struct {
 	} `json:"user"`
 }
 
-func hubauth() string {
+func Auth() string {
 	url := "https://api.hubstaff.com/v1/auth"
-	var jsonStr = []byte(`{"email":"artem.potapov@mentalstack.com","password":"HubPass12~~"}`)
+	var jsonStr = []byte(`{"email":"EMAIL","password":"PASSWORD"}`)
 	req, err := http.NewRequest("POST", url, bytes.NewBuffer(jsonStr))
-	req.Header.Set("app-token", "YQmK0Bo1-NU8u73q7M_prYrahzfcSfJJGSJbchBhP7k")
+	req.Header.Set("app-token", "TOKEN")
 	req.Header.Set("Content-Type", "application/json")
 
 	client := &http.Client{}
@@ -33,7 +33,7 @@ func hubauth() string {
 	if resp.StatusCode == 200 {
 		fmt.Println("response Status:", resp.Status)
 		fmt.Println("response Headers:", resp.Header)
-		model := new(Auth)
+		model := new(AuthModel)
 		json.NewDecoder(resp.Body).Decode(model)
 		return model.User.AuthToken
 	} else {
