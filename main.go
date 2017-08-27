@@ -9,13 +9,13 @@ import (
 )
 
 func main() {
-	jiraClient, err := jira.NewClient(nil, "https://your-instance.com")
+	jiraClient, err := jira.NewClient(nil, "https://INSTANCE.COM")
 	if err != nil {
 		panic(err)
 	}
-	jiraClient.Authentication.SetBasicAuth("username", "password")
+	jiraClient.Authentication.SetBasicAuth("EMAIL", "PASSWORD")
 
-	bot, err := tgbotapi.NewBotAPI("TOKEN")
+	bot, err := tgbotapi.NewBotAPI("TELEGRAM.TOKEN")
 	if err != nil {
 		log.Panic(err)
 	}
@@ -64,7 +64,7 @@ func main() {
 
 			if Text == "/getall" {
 				var reply string
-				for i := 1; i <= 5; i++ {
+				for i := 1; i <= 39; i++ {
 					issueId := "SAM-" + strconv.Itoa(i)
 					issue, _, err := jiraClient.Issue.Get(issueId, nil)
 					if err != nil {
@@ -108,6 +108,12 @@ func main() {
 				msg := tgbotapi.NewMessage(ChatID, reply)
 				bot.Send(msg)
 			}
+
+			if Text == "/hub" {
+				reply := hubauth()
+				msg := tgbotapi.NewMessage(ChatID, reply)
+				bot.Send(msg)
+			}
 		}
 	}
 
@@ -120,7 +126,9 @@ func getReply(issue *jira.Issue) string {
 	TimeEstimate := strconv.Itoa(issue.Fields.TimeEstimate/3600) + "h" + strconv.Itoa(issue.Fields.TimeEstimate/60%60) + "m"
 	reply += issue.Key + " " + issue.Fields.Summary + "\n"
 	reply += " ([" + OriginalEstimate + "]  [" + TimeSpent + "]  [" + TimeEstimate + "])"
-	reply += " (" + issue.Fields.Assignee.DisplayName + ")\n"
+	if issue.Fields.Assignee != nil {
+		reply += " (" + issue.Fields.Assignee.DisplayName + ")\n"
+	}
 
 	var indexSpent int
 	if issue.Fields.TimeOriginalEstimate > issue.Fields.TimeSpent {
