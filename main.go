@@ -3,19 +3,25 @@ package main
 import (
 	"log"
 	"strconv"
+	"strings"
+
+	"./hubstaff-wrapper"
 
 	"github.com/Syfaro/telegram-bot-api"
 	"github.com/andygrunwald/go-jira"
 )
 
+const START_TASKS = 59
+const COUNT_TASKS = 66
+
 func main() {
-	jiraClient, err := jira.NewClient(nil, "https://your-instance.com")
+	jiraClient, err := jira.NewClient(nil, "https://INSTANCE.atlassian.net")
 	if err != nil {
 		panic(err)
 	}
-	jiraClient.Authentication.SetBasicAuth("username", "password")
+	jiraClient.Authentication.SetBasicAuth("EMAIL", "PASS")
 
-	bot, err := tgbotapi.NewBotAPI("TOKEN")
+	bot, err := tgbotapi.NewBotAPI("TOkEN")
 	if err != nil {
 		log.Panic(err)
 	}
@@ -40,6 +46,8 @@ func main() {
 			if Text == "/help" {
 				reply := "Current commands: \n" +
 					"/help - current help \n" +
+					"/auth %EMAIL% %PASSWORD% \n" +
+					"/logout \n" +
 					"/today - return one issue (static issue)\n" +
 					"/getall - return all issues \n" +
 					"/upper - show with excess estimate \n" +
@@ -49,6 +57,12 @@ func main() {
 			}
 
 			if Text == "/today" {
+				if jiraClient.Authentication.Authenticated() == false {
+					msg := tgbotapi.NewMessage(ChatID, "You're not authorized!")
+					bot.Send(msg)
+					break
+				}
+
 				var reply string
 				issue, _, err := jiraClient.Issue.Get("SAM-9", nil)
 				if err != nil {
@@ -64,7 +78,7 @@ func main() {
 
 			if Text == "/getall" {
 				var reply string
-				for i := 1; i <= 5; i++ {
+				for i := START_TASKS; i <= COUNT_TASKS; i++ {
 					issueId := "SAM-" + strconv.Itoa(i)
 					issue, _, err := jiraClient.Issue.Get(issueId, nil)
 					if err != nil {
@@ -79,7 +93,7 @@ func main() {
 
 			if Text == "/upper" {
 				var reply string
-				for i := 1; i <= 39; i++ {
+				for i := START_TASKS; i <= COUNT_TASKS; i++ {
 					issueId := "SAM-" + strconv.Itoa(i)
 					issue, _, err := jiraClient.Issue.Get(issueId, nil)
 					if err != nil {
@@ -95,7 +109,7 @@ func main() {
 
 			if Text == "/less" {
 				var reply string
-				for i := 1; i <= 39; i++ {
+				for i := START_TASKS; i <= COUNT_TASKS; i++ {
 					issueId := "SAM-" + strconv.Itoa(i)
 					issue, _, err := jiraClient.Issue.Get(issueId, nil)
 					if err != nil {
@@ -108,6 +122,94 @@ func main() {
 				msg := tgbotapi.NewMessage(ChatID, reply)
 				bot.Send(msg)
 			}
+
+			if Text == "/hub" {
+				//reply := hubwrapper.Auth() + "\n"
+				//reply += hubwrapper.GetUsers()
+				reply := hubwrapper.GetTasks()
+				//reply := hubwrapper.auth()
+				msg := tgbotapi.NewMessage(ChatID, reply)
+				bot.Send(msg)
+			}
+
+			if Text == "/boards" {
+				var reply string
+				var boards *jira.BoardsList
+				boards, _, err = jiraClient.Board.GetAllBoards(nil)
+				if err != nil {
+					panic(err)
+				}
+
+				for _, board := range boards.Values {
+					reply += board.Name + "\n"
+				}
+				msg := tgbotapi.NewMessage(ChatID, reply)
+				bot.Send(msg)
+			}
+
+			// if Text == "/projects" {
+			// 	var reply string
+			// 	var projects *jira.ProjectList
+			// 	projects, _, err = jiraClient.Project.GetList()
+			// 	if err != nil {
+			// 		panic(err)
+			// 	}
+			//
+			// 	for _, project := range projects {
+			// 		reply += project.Key + "\n"
+			// 	}
+			// 	msg := tgbotapi.NewMessage(ChatID, reply)
+			// 	bot.Send(msg)
+			// }
+
+			// if Text == "/current-user" {
+			// 	var reply string
+			// 	session := jiraClient.Authentication.
+			// 	currentUser, _, err := jiraClient.Authentication.GetCurrentUser()
+			// 	if err != nil {
+			// 		panic(err)
+			// 	}
+			// 	reply = currentUser.Name
+			// 	msg := tgbotapi.NewMessage(ChatID, reply)
+			// 	bot.Send(msg)
+			// }
+
+			if strings.Contains(Text, "/auth") {
+				split := strings.Split(Text, " ")
+				email := split[1]
+				password := split[2]
+				if jiraClient.Authentication.Authenticated() == true {
+					err = jiraClient.Authentication.Logout()
+					if err != nil {
+						panic(err)
+					}
+				}
+
+				jiraClient.Authentication.AcquireSessionCookie(email, password)
+
+				if jiraClient.Authentication.Authenticated() == true {
+					msg := tgbotapi.NewMessage(ChatID, "Auth Successfuly")
+					bot.Send(msg)
+				} else {
+					msg := tgbotapi.NewMessage(ChatID, "Auth Unfortunately")
+					bot.Send(msg)
+				}
+			}
+
+			if Text == "/logout" {
+				if jiraClient.Authentication.Authenticated() == true {
+					err = jiraClient.Authentication.Logout()
+					msg := tgbotapi.NewMessage(ChatID, "Logout Successfuly")
+					bot.Send(msg)
+					if err != nil {
+						panic(err)
+					}
+				} else {
+					msg := tgbotapi.NewMessage(ChatID, "Auth Unfortunately")
+					bot.Send(msg)
+				}
+			}
+
 		}
 	}
 
@@ -120,7 +222,10 @@ func getReply(issue *jira.Issue) string {
 	TimeEstimate := strconv.Itoa(issue.Fields.TimeEstimate/3600) + "h" + strconv.Itoa(issue.Fields.TimeEstimate/60%60) + "m"
 	reply += issue.Key + " " + issue.Fields.Summary + "\n"
 	reply += " ([" + OriginalEstimate + "]  [" + TimeSpent + "]  [" + TimeEstimate + "])"
-	reply += " (" + issue.Fields.Assignee.DisplayName + ")\n"
+	if issue.Fields.Assignee != nil {
+		reply += " (" + issue.Fields.Assignee.DisplayName + ")"
+	}
+	reply += "\n"
 
 	var indexSpent int
 	if issue.Fields.TimeOriginalEstimate > issue.Fields.TimeSpent {
@@ -129,7 +234,7 @@ func getReply(issue *jira.Issue) string {
 		indexSpent = issue.Fields.TimeSpent/3600 - (issue.Fields.TimeSpent/3600 - issue.Fields.TimeOriginalEstimate/3600)
 	}
 	for i := 0; i < indexSpent; i++ {
-		reply += "\xE2\x9A\xAB"
+		reply += "\xF0\x9F\x94\xB5"
 	}
 	for i := 0; i < issue.Fields.TimeOriginalEstimate/3600-issue.Fields.TimeSpent/3600; i++ {
 		reply += "\xE2\x9A\xAA"
