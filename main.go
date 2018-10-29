@@ -5,20 +5,23 @@ import (
 	"strconv"
 	"strings"
 
+	"./hubstaff-wrapper"
+
+	"github.com/Syfaro/telegram-bot-api"
 	"github.com/andygrunwald/go-jira"
-	"github.com/go-telegram-bot-api/telegram-bot-api"
 )
 
 const START_TASKS = 59
 const COUNT_TASKS = 66
 
 func main() {
-	jiraClient, err := jira.NewClient(nil, "https://your-instance.net")
+	jiraClient, err := jira.NewClient(nil, "https://INSTANCE.atlassian.net")
 	if err != nil {
 		panic(err)
 	}
+	jiraClient.Authentication.SetBasicAuth("EMAIL", "PASS")
 
-	bot, err := tgbotapi.NewBotAPI("TOKEN")
+	bot, err := tgbotapi.NewBotAPI("TOkEN")
 	if err != nil {
 		log.Panic(err)
 	}
@@ -120,6 +123,15 @@ func main() {
 				bot.Send(msg)
 			}
 
+			if Text == "/hub" {
+				//reply := hubwrapper.Auth() + "\n"
+				//reply += hubwrapper.GetUsers()
+				reply := hubwrapper.GetTasks()
+				//reply := hubwrapper.auth()
+				msg := tgbotapi.NewMessage(ChatID, reply)
+				bot.Send(msg)
+			}
+
 			if Text == "/boards" {
 				var reply string
 				var boards *jira.BoardsList
@@ -197,6 +209,7 @@ func main() {
 					bot.Send(msg)
 				}
 			}
+
 		}
 	}
 
